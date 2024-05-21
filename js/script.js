@@ -1,109 +1,96 @@
 const inputDisplayElement = document.querySelector('.input-display');
-const acButtonElement = document.querySelector('.ac-button');
 
+//dont allow to paste in display
+inputDisplayElement.addEventListener('paste', (event) => {
+    event.preventDefault();
+});
+
+//dont allow typing in display
+inputDisplayElement.addEventListener('keydown', (event) => {
+    event.preventDefault();
+});
+
+const acButtonElement = document.querySelector('.ac-button');
 acButtonElement.addEventListener('click', () => {
-    inputDisplayElement.value = '';
     calculator.reset();
 });
 
 const percentButton = document.querySelector('.percentage-button');
 percentButton.addEventListener('click', () => {
-    if (calculator.isNewNumber === false) {
-        calculator.operands.push(inputDisplayElement.value);
-        inputDisplayElement.value = calculator.percentage();
-        calculator.reset();
-    }
+    calculator.calculate('%');
 });
 
 const deleteButton = document.querySelector('.delete-button');
 deleteButton.addEventListener('click', () => {
-    if (calculator.isNewNumber === false) {
-        inputDisplayElement.value = inputDisplayElement.value.slice(0, -1);
-    }
+    calculator.removeValueFromDisplay();
 });
 
 const divideButton = document.querySelector('.divide-button');
 divideButton.addEventListener('click', () => {
-    assignOperand(calculator.divide);
+    calculator.calculate('/');
 });
 
 const multiplyButton = document.querySelector('.multiply-button');
 multiplyButton.addEventListener('click', () => {
-    assignOperand(calculator.multiply);
+    calculator.calculate('*');
 });
 
 const minusButton = document.querySelector('.minus-button');
 minusButton.addEventListener('click', () => {
-    assignOperand(calculator.subtract);
+    calculator.calculate('-');
 });
 
 const plusButton = document.querySelector('.plus-button');
 plusButton.addEventListener('click', () => {
-    assignOperand(calculator.add);
+    calculator.calculate('+');
 });
 
 const equalButton = document.querySelector('.equal-button');
 equalButton.addEventListener('click', () => {
-    assignOperand(calculator.result);
+    calculator.calculate('=');
 });
 
 const dotButton = document.querySelector('.dot-button');
 dotButton.addEventListener('click', () => {
-    if(calculator.isNewNumber === true){
-        inputDisplayElement.value = '0.';
-        calculator.isNewNumber = false;
-    }else if(calculator.isNewNumber === false && (inputDisplayElement.value).indexOf('.') === -1){
-        inputDisplayElement.value += '.';
-    }
+    calculator.addValueToDisplay('.');
 });
 
 for (let i = 0; i < 10; i++) {
     const numberButton = document.querySelector(`.number-${i}-button`);
     numberButton.addEventListener('click', () => {
-        if (calculator.isNewNumber) {
-            inputDisplayElement.value = '';
-            calculator.isNewNumber = false;
-        }
-        inputDisplayElement.value += i;
+        calculator.addValueToDisplay(i);
     });
 }
 
 const doubleZeroButton = document.querySelector('.double-0-button');
 doubleZeroButton.addEventListener('click', () => {
-    inputDisplayElement.value += '00';
-    inputDisplayElement.value = parseFloat(inputDisplayElement.value);
+    calculator.addValueToDisplay('0');
+    calculator.addValueToDisplay('0');
 });
 
-function assignOperand(operator) {
-    if (calculator.isNewNumber === false && inputDisplayElement.value !== '' && calculator.operands.length === 0) {
-
-        calculator.operands.push(inputDisplayElement.value);
-        calculator.isNewNumber = true;
-        calculator.operators.push(operator);
-
-    } else if (calculator.isNewNumber === false && inputDisplayElement.value !== '' && calculator.operands.length === 1) {
-        calculator.operands.push(inputDisplayElement.value);
-        const result = calculator.calculate();
-        inputDisplayElement.value = result;
-
-        calculator.operands = [result];
-        calculator.operators.push(operator);
-        calculator.isNewNumber = true;
-    } else if (calculator.isNewNumber === true) {
-        calculator.operators.pop();
-        calculator.operators.push(operator);
-    }
-}
+const ADD = '+';
+const SUBTRACT = '-';
+const MULTIPLY = '*';
+const DIVIDE = '/';
+const PERCENTAGE = '%';
+const EQUALS = '=';
 
 const calculator = {
     isNewNumber: true,
+    isDotAllowed: true,
     operands: [],
     operators: [],
 
     reset: function () {
-        this.typingNewNumber = true;
+        this.resetToEnterNewOperand();
         this.operands = [];
         this.operators = [];
+        inputDisplayElement.value = '0';
+    },
+
+    resetToEnterNewOperand: function () {
+        this.isNewNumber = true;
+        this.isDotAllowed = true;
     },
 
     multiply: function () {
@@ -126,30 +113,94 @@ const calculator = {
         return parseFloat(this.operands[0]) / 100;
     },
 
-    result: function () {
-        if (this.operands.length === 2) {
-            return this.calculate();
+    calculate: function (operation) {
+
+        if (!this.isNewNumber) {
+            this.operands.push(inputDisplayElement.value);
         }
+
+        this.resetToEnterNewOperand();
+        let result = 0;
+
+        let previousOperator = null;
+        if (this.operators.length == 1) {
+            previousOperator = this.operators.pop();
+        } else {
+            previousOperator = operation;
+        }
+
+        switch (previousOperator) {
+            case ADD:
+                result = this.add();
+                break;
+            case SUBTRACT:
+                result = this.subtract();
+                break;
+            case MULTIPLY:
+                result = this.multiply();
+                break;
+            case DIVIDE:
+                result = this.divide();
+                break;
+            case PERCENTAGE:
+                result = this.percentage();
+                break;
+            case EQUALS:
+                result = this.operands[0];
+                break;
+        }
+
+        this.operators.push(operation);
+
+        inputDisplayElement.value = result;
+
+        this.operands = [result];
+        return result;
+
     },
 
-    calculate: function () {
-        const operation = this.operators.pop();
-        switch (operation) {
-            case this.add:
-                return this.add();
-            case this.subtract:
-                return this.subtract();
-            case this.multiply:
-                return this.multiply();
-            case this.divide:
-                return this.divide();
-            case this.percentage:
-                return this.percentage();
+    addValueToDisplay: function (value) {
+        if (this.isNewNumber === true) {
+            inputDisplayElement.value = '';
+            this.isNewNumber = false;
         }
 
+        if (value === '.' && this.isDotAllowed === true) {
+            this.isDotAllowed = false;
+            if (inputDisplayElement.value === '') {
+                inputDisplayElement.value = '0';
+            }
+            inputDisplayElement.value += value;
+        } else if (value === '.' && this.isDotAllowed === false) {
+            return;
+        } else if (inputDisplayElement.value === '0' && value === '0') {
+            return;
+        } else if (inputDisplayElement.value === '0' && value !== '0' && value !== '.') {
+            inputDisplayElement.value = '';
+            inputDisplayElement.value += value;
+        } else {
+            inputDisplayElement.value += value;
+        }
+
+    },
+
+    removeValueFromDisplay: function () {
+
+        if (this.isNewNumber === true) {
+            return false;
+        }
+
+        inputDisplayElement.value = inputDisplayElement.value.slice(0, -1);
+        if (inputDisplayElement.value.indexOf('.') === -1) {
+            this.isDotAllowed = true;
+        }
+        if (inputDisplayElement.value === '') {
+            inputDisplayElement.value = '0';
+            this.isNewNumber = true;
+        }
+
+        return true;
     }
 };
 
-
-
-console.log(inputDisplayElement.value === '');
+calculator.reset();
